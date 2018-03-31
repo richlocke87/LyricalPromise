@@ -174,5 +174,31 @@ namespace Tests {
             p1res(3);
             Assert.AreEqual(9, result);
         }
+
+        [Test()]
+        public void TestDifferentValueTypesCanBeChained() {
+            float[] result = new float[1];
+            new Promise<int>(res => res(8)).Then(val => {
+                return val > 5;
+            }).Then(val => {
+                return val ? "yes" : "no";
+            }).Then(val => {
+                result[0] = val == "yes" ? 1.1f : 8.8f;
+            });
+            Assert.AreEqual(1.1f, result[0]);
+        }
+
+        [Test()]
+        public void TestDifferentPromiseValueTypesCanBeChained() {
+            float[] result = new float[1];
+            new Promise<int>(res => res(8)).Then(val => {
+                return new Promise<bool>(res => res(val > 5));
+            }).Then(val => {
+                return new Promise<string>(res => res(val ? "yes" : "no"));
+            }).Then(val => {
+                result[0] = val == "yes" ? 1.1f : 8.8f;
+            });
+            Assert.AreEqual(1.1f, result[0]);
+        }
     }
 }
