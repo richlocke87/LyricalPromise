@@ -31,27 +31,79 @@ namespace LyricalPromise {
             executor(Resolve);
         }
 
+        /// <summary>
+        /// A follow-on action that receives the chained value and returns a new value
+        /// </summary>
         public Promise<S> Then<S>(Func<T, S> thenFunc) {
             Promise<S> downstream = new Promise<S>();
-
             AddResolveAction(resolveValue => {
                 S thenValue = thenFunc(resolveValue);
                 downstream.Resolve(thenValue);
             });
-
             return downstream;
         }
 
+        /// <summary>
+        /// A follow-on action that receives the chained value and returns a Promise
+        /// </summary>
         public Promise<S> Then<S>(Func<T, Promise<S>> thenFunc) {
             Promise<S> downstream = new Promise<S>();
-
-            Action<T> resolveAction = resolveValue => {
+            AddResolveAction(resolveValue => {
                 Promise<S> thenPromise = thenFunc(resolveValue);
                 thenPromise.AddResolveAction(thenResolveValue => {
                     downstream.Resolve(thenResolveValue);
                 });
-            };
+            });
+            return downstream;
+        }
 
+        /// <summary>
+        /// A follow-on action with no args that returns a new value
+        /// </summary>
+        public Promise<S> Then<S>(Func<S> thenFunc) {
+            Promise<S> downstream = new Promise<S>();
+            AddResolveAction(resolveValue => {
+                S thenValue = thenFunc();
+                downstream.Resolve(thenValue);
+            });
+            return downstream;
+        }
+
+        /// <summary>
+        /// A follow-on action with no args that returns a Promise
+        /// </summary>
+        public Promise<S> Then<S>(Func<Promise<S>> thenFunc) {
+            Promise<S> downstream = new Promise<S>();
+            AddResolveAction(resolveValue => {
+                Promise<S> thenPromise = thenFunc();
+                thenPromise.AddResolveAction(thenResolveValue => {
+                    downstream.Resolve(thenResolveValue);
+                });
+            });
+            return downstream;
+        }
+
+        /// <summary>
+        /// A follow-on action that receives the chained value and returns nothing
+        /// </summary>
+        public Promise<object> Then(Action<T> thenFunc) {
+            Promise<object> downstream = new Promise<object>();
+            AddResolveAction(resolveValue => {
+                thenFunc(resolveValue);
+                downstream.Resolve(null);
+            });
+            return downstream;
+        }
+
+        /// <summary>
+        /// A follow-on action with no args that returns nothing
+        /// </summary>
+        public Promise<object> Then(Action thenFunc) {
+            Promise<object> downstream = new Promise<object>();
+            AddResolveAction(resolveValue => {
+                thenFunc();
+                downstream.Resolve(null);
+            });
             return downstream;
         }
 
