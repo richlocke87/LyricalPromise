@@ -200,5 +200,18 @@ namespace Tests {
             });
             Assert.AreEqual(1.1f, result[0]);
         }
+
+        [Test()]
+        public void TestStaticPromiseResolveGivesResolvedPromise() {
+            var promise = Promise<string>.Resolve("done");
+            Assert.AreEqual(State.Fulfilled, promise.State);
+            Assert.AreEqual("done", promise.Value);
+        }
+
+        [Test()]
+        public void TestStaticPromiseResolveChainsImmediately() {
+            var promise = Promise<string>.Resolve("done").Then(value => value + " it");
+            Assert.AreEqual("done it", promise.Value);
+        }
     }
 }

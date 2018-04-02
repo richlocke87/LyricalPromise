@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LyricalPromise {
 
@@ -59,7 +60,7 @@ namespace LyricalPromise {
         /// </summary>
         void CreatePromise(Executor executor) {
             state = State.Pending;
-            executor(Resolve);
+            executor(DoResolve);
         }
 
         /// <summary>
@@ -69,7 +70,7 @@ namespace LyricalPromise {
             Promise<S> downstream = new Promise<S>();
             AddResolveAction(resolveValue => {
                 S thenValue = thenFunc(resolveValue);
-                downstream.Resolve(thenValue);
+                downstream.DoResolve(thenValue);
             });
             return downstream;
         }
@@ -82,7 +83,7 @@ namespace LyricalPromise {
             AddResolveAction(resolveValue => {
                 Promise<S> thenPromise = thenFunc(resolveValue);
                 thenPromise.AddResolveAction(thenResolveValue => {
-                    downstream.Resolve(thenResolveValue);
+                    downstream.DoResolve(thenResolveValue);
                 });
             });
             return downstream;
@@ -95,7 +96,7 @@ namespace LyricalPromise {
             Promise<S> downstream = new Promise<S>();
             AddResolveAction(resolveValue => {
                 S thenValue = thenFunc();
-                downstream.Resolve(thenValue);
+                downstream.DoResolve(thenValue);
             });
             return downstream;
         }
@@ -108,7 +109,7 @@ namespace LyricalPromise {
             AddResolveAction(resolveValue => {
                 Promise<S> thenPromise = thenFunc();
                 thenPromise.AddResolveAction(thenResolveValue => {
-                    downstream.Resolve(thenResolveValue);
+                    downstream.DoResolve(thenResolveValue);
                 });
             });
             return downstream;
@@ -121,7 +122,7 @@ namespace LyricalPromise {
             Promise<object> downstream = new Promise<object>();
             AddResolveAction(resolveValue => {
                 thenFunc(resolveValue);
-                downstream.Resolve(null);
+                downstream.DoResolve(null);
             });
             return downstream;
         }
@@ -133,7 +134,7 @@ namespace LyricalPromise {
             Promise<object> downstream = new Promise<object>();
             AddResolveAction(resolveValue => {
                 thenFunc();
-                downstream.Resolve(null);
+                downstream.DoResolve(null);
             });
             return downstream;
         }
@@ -142,7 +143,7 @@ namespace LyricalPromise {
         /// The resolve function that is executed when the Promise resolves. Sets this
         /// Promise's state to Fulfilled and executes all other resolve actions
         /// </summary>
-        void Resolve(T t) {
+        void DoResolve(T t) {
             state = State.Fulfilled;
             resolveValue = t;
 
@@ -152,13 +153,32 @@ namespace LyricalPromise {
         /// <summary>
         /// Adds a resolve action to be executed when the Promise resolves.
         /// </summary>
-        /// <param name="resolveAction">Resolve action.</param>
         void AddResolveAction(Action<T> resolveAction) {
             if (state == State.Pending) {
                 resolveActions.Add(resolveAction);
             } else if (state == State.Fulfilled) {
                 resolveAction(resolveValue);
             }
+        }
+
+        /// <summary>
+        /// Returns a Promise resolved with the supplied value.
+        /// </summary>
+        public static Promise<T> Resolve(T value) {
+            return new Promise<T>(res => res(value));
+        }
+
+        public static Promise<T[]> All(params Promise<T>[] promises) {
+            return new Promise<T[]>(resolve => {
+                foreach (var prom in promises) {
+                    prom.AddResolveAction(resolveValue => {
+                        if (promises.All(p => p.State == State.Fulfilled)) {
+                            var valueArray = promises.Select(p => p.resolveValue).ToArray();
+                            resolve(valueArray);
+                        }
+                    });
+                }
+            });
         }
 
     }
