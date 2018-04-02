@@ -213,5 +213,89 @@ namespace Tests {
             var promise = Promise<string>.Resolve("done").Then(value => value + " it");
             Assert.AreEqual("done it", promise.Value);
         }
+
+        [Test()]
+        public void TestResolveAllPromiseResolvesWhenAllPromisesAreResolved() {
+            var resolves = new Action<int>[3];
+            var p1 = new Promise<int>(res => resolves[0] = res);
+            var p2 = new Promise<int>(res => resolves[1] = res);
+            var p3 = new Promise<int>(res => resolves[2] = res);
+            var all = Promise<int>.All(p1, p2, p3);
+
+            Assert.AreEqual(State.Pending, all.State);
+            resolves[0](0);
+            Assert.AreEqual(State.Pending, all.State);
+            resolves[1](1);
+            Assert.AreEqual(State.Pending, all.State);
+            resolves[2](2);
+
+            // Only now all are resolved should outer Promise be fulfilled
+            Assert.AreEqual(State.Fulfilled, all.State);
+        }
+
+        [Test()]
+        public void TestAllPromiseChainsArrayOfResults() {
+            int[] result = null;
+            var resolves = new Action<int>[3];
+            var p1 = new Promise<int>(res => resolves[0] = res);
+            var p2 = new Promise<int>(res => resolves[1] = res);
+            var p3 = new Promise<int>(res => resolves[2] = res);
+            var all = Promise<int>.All(p1, p2, p3).Then(val => result = val);
+
+            resolves[0](0);
+            resolves[1](1);
+
+            // Then not triggered until all are resolved
+            Assert.AreEqual(null, result);
+            resolves[2](2);
+
+            Assert.AreEqual(new int[] { 0, 1, 2 }, result);
+        }
+
+        [Test()]
+        public void TestRacePromiseResolvesWhenFirstPromisesIsResolved() {
+            var resolves = new Action<int>[3];
+            var p1 = new Promise<int>(res => resolves[0] = res);
+            var p2 = new Promise<int>(res => resolves[1] = res);
+            var p3 = new Promise<int>(res => resolves[2] = res);
+            var race = Promise<int>.Race(p1, p2, p3);
+
+            Assert.AreEqual(State.Pending, race.State);
+            resolves[1](1);
+            Assert.AreEqual(State.Fulfilled, race.State);
+        }
+
+        [Test()]
+        public void TestRacePromiseChainsResultOfFirstResolvedPromise() {
+            int result = 0;
+            var resolves = new Action<int>[3];
+            var p1 = new Promise<int>(res => resolves[0] = res);
+            var p2 = new Promise<int>(res => resolves[1] = res);
+            var p3 = new Promise<int>(res => resolves[2] = res);
+            var race = Promise<int>.Race(p1, p2, p3).Then(val => result = val);
+
+            resolves[1](1);
+            Assert.AreEqual(1, race.Value);
+            Assert.AreEqual(1, result);
+        }
+
+        [Test()]
+        public void TestRacePromiseUnaffectedByAllPromisesResolving() {
+            var thenCount = 0;
+            var resolves = new Action<int>[3];
+            var p1 = new Promise<int>(res => resolves[0] = res);
+            var p2 = new Promise<int>(res => resolves[1] = res);
+            var p3 = new Promise<int>(res => resolves[2] = res);
+            var race = Promise<int>.Race(p1, p2, p3);
+            race.Then(val => thenCount++);
+
+            resolves[1](1);
+            resolves[0](10);
+            resolves[2](2);
+
+            Assert.AreEqual(State.Fulfilled, race.State);
+            Assert.AreEqual(1, race.Value);
+            Assert.AreEqual(1, thenCount);
+        }
     }
 }

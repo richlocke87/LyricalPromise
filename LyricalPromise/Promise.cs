@@ -168,13 +168,36 @@ namespace LyricalPromise {
             return new Promise<T>(res => res(value));
         }
 
+        /// <summary>
+        /// Returns a Promise that resolves only when all the provided Promises
+        /// have resolved
+        /// </summary>
         public static Promise<T[]> All(params Promise<T>[] promises) {
             return new Promise<T[]>(resolve => {
                 foreach (var prom in promises) {
                     prom.AddResolveAction(resolveValue => {
+                        // Resolve if all are fulfilled
                         if (promises.All(p => p.State == State.Fulfilled)) {
                             var valueArray = promises.Select(p => p.resolveValue).ToArray();
                             resolve(valueArray);
+                        }
+                    });
+                }
+            });
+        }
+
+        /// <summary>
+        /// Returns a Promise that resolves as soon as any of the supplied Promises
+        /// resolve. The Promise receives the value of the first Promise to resolve
+        /// </summary>
+        public static Promise<T> Race(params Promise<T>[] promises) {
+            return new Promise<T>(resolve => {
+                foreach (var prom in promises) {
+                    prom.AddResolveAction(resolveValue => {
+                        // Resolve if only one is fulfilled
+                        var numResolved = promises.Count(p => p.State == State.Fulfilled);
+                        if (numResolved == 1) {
+                            resolve(resolveValue);
                         }
                     });
                 }
